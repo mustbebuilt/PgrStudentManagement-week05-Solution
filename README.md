@@ -1,309 +1,204 @@
-# PGR Student Management: Week 5 Starter
-
-## Overview
-
-This starter contains the completed Week 4 modular-monolith reference implementation. It is the starting point for the Week 5 laboratories on data modelling, data architecture, and persistence.
-
-The application currently uses module-owned in-memory storage. During Week 5, you will introduce relational persistence for selected Students-module data and document persistence for the Research Activity Log.
-
-## Technology
-
-The starter uses:
-
-- .NET 8
-- ASP.NET Core MVC
-- Razor views
-- Constructor dependency injection
-- A modular-monolith structure
-- Module-owned in-memory collections
-- Separate seed-data classes
-
-The starter does not yet use:
-
-- Entity Framework Core
-- SQLite
-- MongoDB
-- Database migrations
-- Data Access Objects
-- Document repositories
-
-You will introduce these during the Week 5 laboratories.
-
-## Existing Behaviour
-
-### Student Management
-
-The Students module implements:
-
-- `W2-UC01`: View Enrolment Details
-- `W2-UC02`: View Thesis Details
-- `W2-UC03`: Update Student Status
-- `W2-UC04`: Update Expected Thesis Submission Date
-- `W2-UC05`: Record Actual Thesis Submission
-- `W3-UC01`: Create Student
-- `W3-UC02`: List Students
-- `W3-UC03`: View Student Details
-
-### Academic Supervisor Management
-
-The Academic Supervisors module implements:
-
-- `W4-UC01`: Create Academic Supervisor
-- `W4-UC02`: List Academic Supervisors
-- `W4-UC03`: View Academic Supervisor Details
-- `W4-UC04`: Assign Academic Supervisor to Student
-- `W4-UC05`: View Student Supervisory Team
-
-Do not remove or change this observable behaviour while introducing persistence in Week 5.
-
-## Application Structure
-
-The application is organised around business modules:
-
-```text
-PgrStudentManagement.Web/
-├── Modules/
-│   ├── Students/
-│   │   ├── Contracts/
-│   │   ├── Controllers/
-│   │   ├── Models/
-│   │   ├── Services/
-│   │   └── Data/
-│   └── AcademicSupervisors/
-│       ├── Controllers/
-│       ├── Models/
-│       ├── Services/
-│       └── Data/
-├── Views/
-│   ├── Students/
-│   ├── AcademicSupervisors/
-│   └── Shared/
-└── Program.cs
-```
-
-Use the source code as the definitive description if the exact filenames differ slightly.
-
-## Module Responsibilities
-
-### Students Module
-
-The Students module owns:
-
-- `Student`
-- `Status`
-- Student creation and retrieval
-- Existing enrolment and thesis information
-- Student status and thesis-submission updates
-- Student Razor views
-- Student in-memory data
-- The public `IStudentLookup` contract
-
-Its main dependency direction is:
-
-```text
-StudentsController
-    -> StudentService
-        -> StudentStorage
-            -> List<Student>
-```
-
-### Academic Supervisors Module
-
-The Academic Supervisors module owns:
-
-- `AcademicSupervisor`
-- `SupervisorEmploymentType`
-- `SupervisoryRole`
-- `SupervisoryAssignment`
-- Academic Supervisor creation and retrieval
-- Role-specific eligibility
-- Supervisory-assignment rules
-- Academic Supervisor and assignment views
-- Supervisor and assignment in-memory data
-
-Its main dependency direction is:
-
-```text
-AcademicSupervisorsController
-    -> AcademicSupervisorService
-        -> AcademicSupervisorStorage
-            -> List<AcademicSupervisor>
-            -> List<SupervisoryAssignment>
-```
-
-## Cross-Module Student Lookup
-
-The Academic Supervisors module confirms that a Student exists through the public Students-module contract:
-
-```text
-AcademicSupervisorService
-    -> IStudentLookup
-        -> StudentService
-```
-
-The Academic Supervisors module must not access `StudentStorage` or the private Student collection directly.
-
-Only the minimum Student information required by the supervisory use cases crosses the module boundary, normally through `StudentSummary`.
-
-## In-Memory Storage and Seed Data
-
-Storage and seed-data creation are separated.
-
-```text
-StudentStorage
-    -> stores and retrieves Student records
-
-StudentDataSeeder
-    -> creates the initial Student records
-
-AcademicSupervisorStorage
-    -> stores and retrieves Academic Supervisors
-    -> stores and retrieves Supervisory Assignments
-
-AcademicSupervisorDataSeeder
-    -> creates the initial Academic Supervisors
-    -> verifies Student references through IStudentLookup
-    -> creates the initial Supervisory Assignments
-```
-
-The storage classes begin with empty collections. They do not create their own sample data.
-
-### Seeder Order
-
-The application runs the seeders in this order:
-
-```text
-1. StudentDataSeeder
-2. AcademicSupervisorDataSeeder
-```
-
-Students must exist before supervisory assignments are seeded.
-
-Both seeders should be safe to run more than once without creating duplicate seed records.
-
-## Reference Students
-
-The starter contains four seeded Students:
-
-```text
-S100001  John Doe
-S100002  Jane Smith
-S100003  Casey Wilson
-S100004  Morgan Lee
-```
-
-## Reference Academic Supervisors
-
-The starter contains four seeded Academic Supervisors:
-
-```text
-SUP001  Robin Carter
-SUP002  Jamie Ahmed
-SUP003  Taylor Green
-SUP004  Avery Brown
-```
-
-## Reference Supervisory Assignments
-
-```text
-S100001
-    SUP001 as DirectorOfStudies, current
-    SUP002 as FirstSupervisor, current
-    SUP003 as SecondSupervisor, historical
-
-S100002
-    SUP001 as FirstSupervisor, current
-
-S100003
-    No supervisory assignments
-
-S100004
-    SUP002 as DirectorOfStudies, current
-    SUP003 as Adviser, current
-```
-
-This dataset supports testing:
-
-- Several assignments for one Student
-- A Student with one assignment
-- A known Student with no assignments
-- Current and historical assignments
-- An external Adviser
-- One Academic Supervisor assigned to several Students
-- A known Academic Supervisor with no assignments
-
-## Build and Run
-
-From the solution directory, restore and build the solution:
-
-```bash
-dotnet restore
-dotnet build
-```
-
-Run the web application:
-
-```bash
-dotnet run --project PgrStudentManagement.Web
-```
-
-Use the address displayed in the terminal. The supplied development configuration may use:
-
-```text
-http://localhost:5277
-```
-
-The actual port may differ on your computer.
-
-## Useful Routes
-
-If the application runs on `http://localhost:5277`, useful routes include:
-
-```text
-http://localhost:5277/Students
-http://localhost:5277/AcademicSupervisors
-http://localhost:5277/AcademicSupervisors/Create
-http://localhost:5277/AcademicSupervisors/Team?studentNumber=S100001
-http://localhost:5277/AcademicSupervisors/Team?studentNumber=S100002
-http://localhost:5277/AcademicSupervisors/Team?studentNumber=S100003
-http://localhost:5277/AcademicSupervisors/Team?studentNumber=S100004
-```
-
-Expected supervisory-team results:
-
-- `S100001` has current and historical assignments.
-- `S100002` has one current assignment.
-- `S100003` displays **No supervisory assignments found**.
-- `S100004` has two current assignments.
-- An unknown Student number displays **Student not found**.
-
-## Run the Tests
-
-If the solution includes `PgrStudentManagement.Tests`, run:
+# PGR Student Management - Week 5 Persistence Architecture
+
+This document summarizes the changes introduced to the application across **Lab 1 (Relational Data Modelling & Persistence with SQLite)** and **Lab 2 (Document Data Modelling & NoSQL Persistence with MongoDB)**.
+
+---
+
+## Architecture & Technology Stack
+
+The application has evolved from an entirely in-memory modular monolith into a multi-model architecture combining relational and document persistence while preserving clean module boundaries:
+
+| Capability | Persistence Technology | Access Mechanism | Owning Module |
+|---|---|---|---|
+| **Students & Enrolments** | Relational (**SQLite**) via **Entity Framework Core 10** | `EnrolmentDao` & `StudentManagementDbContext` | `Students` |
+| **Research Activity Log** | Document (**MongoDB**) via **MongoDB .NET Driver 3** | `ResearchActivityRepository` & `IMongoClient` | `ResearchActivities` |
+| **Academic Supervisors** | In-Memory Collections | `AcademicSupervisorStorage` | `AcademicSupervisors` |
+
+---
+
+## Lab 1: Relational Persistence with SQLite & EF Core
+
+### 1. Purpose & Learning Outcomes
+- Transition selected student and enrolment data from volatile in-memory collections to a persistent relational database.
+- Introduce `Enrolment` as a first-class domain concept separate from `Student` (one student has zero, one, or many enrolments over time).
+- Implement Data Access Object (DAO) pattern to encapsulate database queries behind the service layer.
+- Preserve module encapsulation and existing Week 4 behaviour.
+
+### 2. Dependencies & Configuration
+- **Installed NuGet Packages** in `PgrStudentManagement.Web.csproj`:
+  - `Microsoft.EntityFrameworkCore` (v10.0.13)
+  - `Microsoft.EntityFrameworkCore.Sqlite` (v10.0.13)
+  - `Microsoft.EntityFrameworkCore.Design` (v10.0.13)
+- **Updated EF Core CLI Tool**:
+  - Updated `dotnet-ef` tool to match the runtime version (`10.0.13`).
+- **Connection String in `appsettings.json`**:
+  ```json
+  "ConnectionStrings": {
+    "StudentManagementDatabase": "Data Source=student-management.db"
+  }
+  ```
+
+### 3. Domain Model & Relational Mappings
+- **`Modules/Students/Models/EnrolmentStatus.cs`**:
+  - Created enum with values: `Active`, `Suspended`, `Completed`, `Withdrawn`.
+- **`Modules/Students/Models/Enrolment.cs`**:
+  - Created entity with `EnrolmentId` (PK, auto-increment), `StudentNumber` (FK), `ProgrammeCode`, `StartDate`, `ExpectedEndDate` (nullable), `ModeOfStudy`, and `Status`.
+  - Added navigation property `public Student Student { get; set; } = null!;`.
+- **`Modules/Students/Models/Student.cs`**:
+  - Added primary key annotation `[Key]` and `[MaxLength(20)]` to `StudentNumber`.
+  - Added required length constraints and unique index `[Index(nameof(EmailAddress), IsUnique = true)]`.
+  - Added navigation collection `public ICollection<Enrolment> Enrolments { get; set; }`.
+  - Decorated legacy in-memory properties with `[NotMapped]` to prevent schema mismatch while ensuring backwards compatibility with Week 4 use cases.
+- **`Modules/Students/Data/StudentManagementDbContext.cs`**:
+  - Implemented `DbContext` with `DbSet<Student> Students` and `DbSet<Enrolment> Enrolments`.
+  - Configured 1-to-many relationship in `OnModelCreating` with `DeleteBehavior.Restrict` (preventing accidental cascade deletion of enrolment histories).
+  - Configured `Status` to be stored as readable text (`HasConversion<string>()`) with `MaxLength(30)`.
+
+### 4. Database Migrations & Seeding
+- **Created Migration**: `InitialStudentEnrolmentModel` containing `Students` and `Enrolments` tables, foreign keys, indexes, and constraints matching the initial ERD.
+- **Database Schema**: Applied to `student-management.db` via `dotnet ef database update`.
+- **`Modules/Students/Data/StudentDataSeeder.cs`**:
+  - Added `SeedAsync(StudentManagementDbContext context)` to insert initial students (`S100001` - `S100004`) and 4 enrolments across active, completed, suspended, full-time, and part-time states.
+  - Added duplicate check (`context.Students.AnyAsync()`) to guarantee idempotency.
+  - Retained in-memory `Seed()` method for backwards compatibility with legacy services and unit tests.
+
+### 5. Data Access Layer & Presentation
+- **`Modules/Students/Data/Daos/EnrolmentDao.cs`**:
+  - Created DAO encapsulating the EF Core query using `.AsNoTracking()`, filtering by `StudentNumber`, and ordering by `StartDate`.
+- **`Modules/Students/Services/StudentService.cs`**:
+  - Injected `EnrolmentDao` and exposed `GetEnrolmentsForStudentAsync(string studentNumber)`.
+- **`Modules/Students/Controllers/StudentsController.cs`**:
+  - Added `Enrolments(string studentNumber)` action returning the list of enrolments or setting an empty-result message.
+- **`Views/Students/Enrolments.cshtml`**:
+  - Created Razor view to render student enrolments in chronological order with formatted dates and status values, or display `"No enrolments found"`.
+- **Navigation**:
+  - Added "View enrolments" links in both `Views/Students/Index.cshtml` and `Views/Students/Details.cshtml`.
+
+### 6. Relational Verification & Tests
+- Added `PgrStudentManagement.Tests/Data/EnrolmentDaoTests.cs` using SQLite in-memory provider to test:
+  - Seeding records and duplicate prevention.
+  - Chronological ordering of enrolments (`S100002`).
+  - Correct handling of nullable `ExpectedEndDate` (`S100003`).
+  - Empty enrolment response for students without enrolments (`S100004`).
+
+---
+
+## Lab 2: Document Persistence with MongoDB
+
+### 1. Purpose & Learning Outcomes
+- Introduce the **Research Activity Log** as a new business module using document (NoSQL) persistence.
+- Store polymorphically structured activity data (reflections, supervision meetings, conference attendance) in a single document collection without requiring sparse relational tables or complex joins.
+- Use reference identifier (`studentNumber`) across module boundaries instead of embedding complete student entity records.
+- Implement repository pattern for document persistence and display data through MVC.
+
+### 2. Dependencies & Configuration
+- **Installed NuGet Package** in `PgrStudentManagement.Web.csproj`:
+  - `MongoDB.Driver` (v3.13.0)
+- **Connection Configuration in `appsettings.json`**:
+  ```json
+  "ResearchActivityDatabase": {
+    "ConnectionString": "mongodb://localhost:27017",
+    "DatabaseName": "StudentManagement",
+    "CollectionName": "ResearchActivities"
+  }
+  ```
+
+### 3. Document Model
+- **`Modules/ResearchActivities/Models/ResearchActivityType.cs`**:
+  - Created enum: `ResearchReflection`, `SupervisionMeeting`, `ConferenceAttendance`, `Publication`, `Experiment`, `TrainingEvent`.
+- **`Modules/ResearchActivities/Models/ResearchActivity.cs`**:
+  - `[BsonId] public string Id { get; set; }`
+  - `public string StudentNumber { get; set; }`
+  - `[BsonRepresentation(BsonType.String)] public ResearchActivityType ActivityType { get; set; }`
+  - `public string Title { get; set; }`
+  - `public DateTime ActivityDate { get; set; }`
+  - `public DateTime CreatedOn { get; set; }`
+  - `public List<string> Tags { get; set; } = []`
+  - `public Dictionary<string, object> Details { get; set; } = new()`: Flexible polymorphic payload storing activity-specific details.
+
+### 4. Repository & Seeder
+- **`Modules/ResearchActivities/Data/ResearchActivityRepository.cs`**:
+  - Injected `IMongoClient` and `IConfiguration` to resolve `IMongoCollection<ResearchActivity>`.
+  - Implemented `GetForStudentAsync(string studentNumber)` querying by student number and sorting by `ActivityDate` ascending.
+  - Implemented `AddAsync(ResearchActivity activity)`.
+- **`Modules/ResearchActivities/Data/ResearchActivityDataSeeder.cs`**:
+  - Implemented `SeedAsync(ResearchActivityRepository repository)` with idempotency check.
+  - Seeded `activity-001` (`ResearchReflection` with `summary` and `nextSteps`) for `S100001`.
+  - Seeded `activity-002` (`SupervisionMeeting` with `discussion` and `actions`) for `S100001`.
+  - Seeded `activity-003` (`ConferenceAttendance` with `conferenceName`, `location`, `presentationTitle`) for `S100002`.
+  - Left `S100003` and `S100004` empty to test the alternative flow.
+
+### 5. Service, Controller & Views
+- **`Modules/ResearchActivities/Services/ResearchActivityService.cs`**:
+  - Coordinates use case and calls repository: `GetActivitiesForStudentAsync(string studentNumber)`.
+- **`Modules/ResearchActivities/Controllers/ResearchActivityController.cs`**:
+  - Receives `studentNumber`, fetches activities via service, and passes model to view.
+  - Handles empty results with `"No research activities found"` message.
+  - Supported routing for both `/ResearchActivity` and `/ResearchActivities`.
+- **`Views/ResearchActivities/Index.cshtml` & `Views/ResearchActivity/Index.cshtml`**:
+  - Renders student number, activity date, type, title, and tags.
+  - Displays appropriate type-specific detail sections for each activity variant.
+  - Displays alert banner when no activities exist.
+- **Navigation**:
+  - Added "Research activities" link to `Views/Students/Index.cshtml` and `Views/Students/Details.cshtml`.
+
+### 6. Dependency Injection & Startup Execution
+- **`Program.cs` Updates**:
+  - Registered `IMongoClient` singleton with configured connection string.
+  - Registered `ResearchActivityRepository` and `ResearchActivityService` as scoped services.
+  - Executed `await ResearchActivityDataSeeder.SeedAsync(researchActivityRepository)` during application startup.
+  - Added custom controller route pattern for `ResearchActivities`.
+
+### 7. Document Verification & Tests
+- Added `PgrStudentManagement.Tests/Data/ResearchActivityRepositoryTests.cs` testing:
+  - Seeding of multiple activity types.
+  - Idempotency when running seeder multiple times.
+  - Chronological ordering by `ActivityDate`.
+  - Insertion and retrieval of polymorphic dictionary details.
+  - Verification of seeded documents in the default MongoDB database.
+
+---
+
+## Verification & Test Results
+
+All 25 automated tests across the solution pass successfully:
 
 ```bash
 dotnet test
 ```
 
-The test project may include:
+```text
+Passed!  - Failed: 0, Passed: 25, Skipped: 0, Total: 25, Duration: 1 s - PgrStudentManagement.Tests.dll (net10.0)
+```
 
-- Student seeder tests
-- Academic Supervisor seeder tests
-- Academic Supervisor storage tests
-- Academic Supervisor service tests
-- `FakeStudentLookup` as a test double
+### Test Breakdown:
+- **Relational Persistence**: `EnrolmentDaoTests` (5 tests)
+- **Document Persistence**: `ResearchActivityRepositoryTests` (5 tests)
+- **Academic Supervisors**: Storage, Seeder, Service, and Seed Order Tests (11 tests)
+- **Students Baseline**: Student Data Seeder Tests (4 tests)
 
-`FakeStudentLookup` belongs only in the test project. It must not be registered in the production application.
+---
 
-## Data Lifetime
+## Running the Application
 
-All starter data is held in memory.
+### 1. Prerequisites
+- **.NET SDK 10.0**
+- **MongoDB** daemon running locally on `localhost:27017`
 
-Changes remain available while the application process is running. When the application stops or restarts:
+### 2. Start Application
+```bash
+dotnet run --project PgrStudentManagement.Web
+```
 
-- Newly created Students are lost.
-- Newly created Academic Supervisors are lost.
-- Newly created Supervisory Assignments are lost.
-- The original reference data is seeded again.
-
-This is the expected starting behaviour for Week 5.
+### 3. Useful URLs for Testing
+- **Students List**: `http://localhost:5277/Students`
+- **View Enrolments (Relational / SQLite)**:
+  - `http://localhost:5277/Students/Enrolments?studentNumber=S100001` (1 enrolment)
+  - `http://localhost:5277/Students/Enrolments?studentNumber=S100002` (2 enrolments in chronological order)
+  - `http://localhost:5277/Students/Enrolments?studentNumber=S100003` (1 enrolment with unrecorded expected end date)
+  - `http://localhost:5277/Students/Enrolments?studentNumber=S100004` (displays *No enrolments found*)
+- **View Research Activities (Document / MongoDB)**:
+  - `http://localhost:5277/ResearchActivities?studentNumber=S100001` (2 activities: reflection & meeting)
+  - `http://localhost:5277/ResearchActivities?studentNumber=S100002` (1 activity: conference attendance)
+  - `http://localhost:5277/ResearchActivities?studentNumber=S100004` (displays *No research activities found*)
+- **Academic Supervisors**: `http://localhost:5277/AcademicSupervisors`
